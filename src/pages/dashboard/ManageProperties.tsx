@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Pencil, Trash2, Search, MapPin, Bed, Bath } from 'lucide-react';
 import { usePropertyStore } from '../../store/propertyStore';
 import { useAuthStore } from '../../store/authStore';
+import { propertyService } from '../../services/api';
 import { formatPrice, capitalize } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -45,6 +46,8 @@ export function ManageProperties() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
 
   const myProperties = user?.role === 'admin' ? properties : properties.filter(p => p.agentId === user?.id);
   const filtered = myProperties.filter(p => p.title.toLowerCase().includes(search.toLowerCase()) || p.city.toLowerCase().includes(search.toLowerCase()));
@@ -63,9 +66,20 @@ export function ManageProperties() {
     setShowModal(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const refreshProperties = async () => {
+    setFetching(true);
+    try {
+      const data = await propertyService.getAll();
+      usePropertyStore.getState().setProperties(data);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data: Omit<Property, 'id' | 'createdAt'> = {
+    setLoading(true);
+    const data: any = {
       title: form.title,
       description: form.description,
       price: Number(form.price),
@@ -81,28 +95,35 @@ export function ManageProperties() {
       images: form.images.split('\n').map(s => s.trim()).filter(Boolean),
       features: form.features.split(',').map(s => s.trim()).filter(Boolean),
       agentId: user?.id || '',
-      agentName: user?.name || '',
-      agentPhone: user?.phone || '',
-      agentEmail: user?.email || '',
-      agentAvatar: user?.avatar || '',
       isFeatured: form.isFeatured,
       status: form.status,
     };
-    if (editingId) {
-      updateProperty(editingId, data);
-      toast.success('Property updated');
-    } else {
-      const newProp: Property = { ...data, id: `p${Date.now()}`, createdAt: new Date().toISOString().split('T')[0] };
-      addProperty(newProp);
-      toast.success('Property added');
+    try {
+      if (editingId) {
+        await propertyService.update(editingId, data);
+        toast.success('Property updated');
+      } else {
+        await propertyService.create(data);
+        toast.success('Property added');
+      }
+      setShowModal(false);
+      refreshProperties();
+    } catch (err: any) {
+      toast.error(err.message || 'Operation failed');
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteProperty(id);
-    setDeleteConfirm(null);
-    toast.success('Property deleted');
+  const handleDelete = async (id: string) => {
+    try {
+      await propertyService.delete(id);
+      setDeleteConfirm(null);
+      toast.success('Property deleted');
+      refreshProperties();
+    } catch (err: any) {
+      toast.error(err.message || 'Delete failed');
+    }
   };
 
   const typeOpts = [{ value: 'sale', label: 'For Sale' }, { value: 'rent', label: 'For Rent' }];

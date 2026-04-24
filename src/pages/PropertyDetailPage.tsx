@@ -12,9 +12,12 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Input } from '../components/ui/Input';
+import { Star } from 'lucide-react';
+import { reviewService } from '../services/api';
 import { ScheduleVisitForm } from '../components/property/ScheduleVisitForm';
 import { ContactAgentForm } from '../components/property/ContactAgentForm';
 import { EMICalculator } from '../components/property/EMICalculator';
+import { ChatBox } from '../components/property/ChatBox';
 import type { Property } from '../types';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
@@ -29,6 +32,9 @@ export function PropertyDetailPage() {
   const [showInquiry, setShowInquiry] = useState(false);
   const [inquirySent, setInquirySent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
+  const [showChat, setShowChat] = useState(false);
 
   const { toggle, isFavorite } = useFavoritesStore();
   const { user } = useAuthStore();
@@ -48,6 +54,7 @@ export function PropertyDetailPage() {
       setProperty(data);
       setLoading(false);
     });
+    reviewService.getByProperty(id).then(setReviews);
   }, [id]);
 
   const handleToggleFavorite = () => {
@@ -75,6 +82,31 @@ export function PropertyDetailPage() {
     setInquirySent(true);
     toast.success('Inquiry sent successfully!');
   };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !user) {
+      toast.error('Please log in to leave a review');
+      return;
+    }
+    try {
+      const review = await reviewService.addReview({
+        userId: user.id,
+        propertyId: id,
+        rating: newReview.rating,
+        comment: newReview.comment,
+      });
+      setReviews([review, ...reviews]);
+      setNewReview({ rating: 5, comment: '' });
+      toast.success('Review added!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add review');
+    }
+  };
+
+  const averageRating = reviews.length > 0
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
+    : null;
 
   if (loading) {
     return (
@@ -280,6 +312,71 @@ export function PropertyDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Review System */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Reviews & Ratings</h2>
+                {averageRating && (
+                  <div className="flex items-center gap-1.5 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1 rounded-full border border-yellow-100 dark:border-yellow-900/50">
+                    <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                    <span className="text-sm font-bold text-yellow-700 dark:text-yellow-400">{averageRating}</span>
+                    <span className="text-xs text-slate-400">({reviews.length})</span>
+                  </div>
+                )}
+              </div>
+
+              {user && (
+                <form onSubmit={handleReviewSubmit} className="mb-8 p-4 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-sm font-semibold mb-3">Add a Review</p>
+                  <div className="flex gap-2 mb-4">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setNewReview({ ...newReview, rating: star })}
+                        className="transition-transform hover:scale-110"
+                      >
+                        <Star className={clsx("h-6 w-6", star <= newReview.rating ? "text-yellow-500 fill-current" : "text-slate-300 dark:text-slate-700")} />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    required
+                    value={newReview.comment}
+                    onChange={e => setNewReview({ ...newReview, comment: e.target.value })}
+                    placeholder="Tell us about your experience..."
+                    className="w-full px-4 py-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none mb-3"
+                    rows={3}
+                  />
+                  <Button type="submit" size="sm">Submit Review</Button>
+                </form>
+              )}
+
+              <div className="space-y-6">
+                {reviews.length === 0 ? (
+                  <p className="text-center py-8 text-slate-500 italic">No reviews yet. Be the first to review!</p>
+                ) : (
+                  reviews.map(review => (
+                    <div key={review.id} className="flex gap-4">
+                      <img src={review.userAvatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'} alt="" className="h-10 w-10 rounded-full object-cover shrink-0" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h4 className="font-semibold text-sm text-slate-900 dark:text-white">{review.userName}</h4>
+                          <span className="text-[10px] text-slate-400">{formatDate(review.createdAt)}</span>
+                        </div>
+                        <div className="flex gap-0.5 mb-2">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <Star key={star} className={clsx("h-3 w-3", star <= review.rating ? "text-yellow-500 fill-current" : "text-slate-200 dark:text-slate-700")} />
+                          ))}
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{review.comment}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Right: Agent Card & Contact */}
@@ -307,6 +404,20 @@ export function PropertyDetailPage() {
                     <Mail className="h-4 w-4" />
                     {property.agentEmail}
                   </a>
+                  <button
+                    onClick={() => {
+                      if (!user) {
+                        toast.error('Please log in to chat');
+                        navigate('/login');
+                      } else {
+                        setShowChat(true);
+                      }
+                    }}
+                    className="flex items-center gap-2 text-sm text-blue-600 font-semibold hover:underline"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Chat with Agent
+                  </button>
                 </div>
               </div>
               
@@ -393,6 +504,14 @@ export function PropertyDetailPage() {
           </form>
         )}
       </Modal>
+
+      {showChat && property && (
+        <ChatBox
+          receiverId={property.agentId}
+          receiverName={property.agentName}
+          onClose={() => setShowChat(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 export type PropertyType = 'sale' | 'rent';
 export type PropertyCategory = 'house' | 'apartment' | 'condo' | 'villa' | 'townhouse' | 'studio';
-export type UserRole = 'admin' | 'agent' | 'customer';
+export type UserRole = 'admin' | 'user';
 export type InquiryStatus = 'pending' | 'responded' | 'closed';
 
 export interface Property {
@@ -64,3 +64,24 @@ export interface PropertyFilters {
   minArea: number;
   maxArea: number;
 }
+
+export interface Review {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  propertyId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+}
+

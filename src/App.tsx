@@ -14,7 +14,19 @@ import { ManageUsers } from './pages/dashboard/ManageUsers';
 import { InquiriesPage } from './pages/dashboard/InquiriesPage';
 import { SettingsPage } from './pages/dashboard/SettingsPage';
 
+import { useEffect } from 'react';
+import { useAuthStore } from './store/authStore';
+import { usePropertyStore } from './store/propertyStore';
+
 function App() {
+  const initializeAuth = useAuthStore(state => state.initialize);
+  const fetchProperties = usePropertyStore(state => state.fetchProperties);
+
+  useEffect(() => {
+    initializeAuth();
+    fetchProperties();
+  }, [initializeAuth, fetchProperties]);
+
   return (
     <BrowserRouter>
       <Routes>

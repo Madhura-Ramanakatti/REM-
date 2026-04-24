@@ -1,16 +1,15 @@
 import { create } from 'zustand';
 import type { Property, PropertyFilters } from '../types';
-import { MOCK_PROPERTIES } from '../data/mockData';
+import { propertyService } from '../services/api';
 
 interface PropertyState {
   properties: Property[];
   filters: PropertyFilters;
+  isLoading: boolean;
   currentPage: number;
   pageSize: number;
   setProperties: (props: Property[]) => void;
-  addProperty: (prop: Property) => void;
-  updateProperty: (id: string, data: Partial<Property>) => void;
-  deleteProperty: (id: string) => void;
+  fetchProperties: () => Promise<void>;
   setFilters: (filters: Partial<PropertyFilters>) => void;
   resetFilters: () => void;
   setPage: (page: number) => void;
@@ -28,19 +27,24 @@ const defaultFilters: PropertyFilters = {
   maxArea: 0,
 };
 
-export const usePropertyStore = create<PropertyState>((set) => ({
-  properties: [...MOCK_PROPERTIES],
+export const usePropertyStore = create<PropertyState>((set, get) => ({
+  properties: [],
   filters: defaultFilters,
+  isLoading: false,
   currentPage: 1,
   pageSize: 9,
   setProperties: (properties) => set({ properties }),
-  addProperty: (prop) => set(state => ({ properties: [...state.properties, prop] })),
-  updateProperty: (id, data) => set(state => ({
-    properties: state.properties.map(p => p.id === id ? { ...p, ...data } : p),
-  })),
-  deleteProperty: (id) => set(state => ({
-    properties: state.properties.filter(p => p.id !== id),
-  })),
+  fetchProperties: async () => {
+    set({ isLoading: true });
+    try {
+      const data = await propertyService.getAll();
+      set({ properties: data });
+    } catch (err) {
+      console.error('Failed to fetch properties', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
   setFilters: (filters) => set(state => ({ filters: { ...state.filters, ...filters }, currentPage: 1 })),
   resetFilters: () => set({ filters: defaultFilters, currentPage: 1 }),
   setPage: (page) => set({ currentPage: page }),

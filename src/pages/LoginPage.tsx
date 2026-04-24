@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Building2, Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
-import { userService } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -17,7 +16,7 @@ export function LoginPage() {
   const [signupForm, setSignupForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { login, isAuthenticated } = useAuthStore();
+  const { signIn, signUp, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,14 +26,14 @@ export function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const user = await userService.login(loginForm.email, loginForm.password);
-    setLoading(false);
-    if (user) {
-      login(user);
-      toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
+    try {
+      await signIn(loginForm.email, loginForm.password);
+      toast.success('Successfully logged in!');
       navigate('/dashboard');
-    } else {
-      toast.error('Invalid email or password');
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid email or password');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,18 +48,11 @@ export function LoginPage() {
     setErrors({});
     setLoading(true);
     try {
-      const user = await userService.register({
-        name: signupForm.name,
-        email: signupForm.email,
-        password: signupForm.password,
-        phone: signupForm.phone,
-      });
-      login(user);
-      toast.success('Account created! Welcome!');
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Registration failed';
-      toast.error(message);
+      await signUp(signupForm.email, signupForm.password, signupForm.name);
+      toast.success('Account created! Please verify your email.');
+      setTab('login');
+    } catch (err: any) {
+      toast.error(err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
