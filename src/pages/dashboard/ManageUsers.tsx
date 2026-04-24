@@ -1,16 +1,28 @@
-import { useState } from 'react';
-import { Search, UserCheck, Mail, Phone } from 'lucide-react';
-import { MOCK_USERS } from '../../data/mockData';
+import { useState, useEffect } from 'react';
+import { Search, UserCheck, Mail, Phone, Loader2 } from 'lucide-react';
+import { userService } from '../../services/api';
 import { Badge } from '../../components/ui/Badge';
 import { formatDate, capitalize } from '../../utils/formatters';
+import type { User as UserType } from '../../types';
 
 export function ManageUsers() {
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
-  const filtered = MOCK_USERS.filter(u => {
+  useEffect(() => {
+    userService.getAll().then(data => {
+      setUsers(data);
+      setLoading(false);
+    });
+  }, []);
+
+  const filtered = users.filter(u => {
     const q = search.toLowerCase();
-    const matchSearch = u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    const nameMatch = u.name?.toLowerCase().includes(q) || false;
+    const emailMatch = u.email?.toLowerCase().includes(q) || false;
+    const matchSearch = nameMatch || emailMatch;
     const matchRole = !roleFilter || u.role === roleFilter;
     return matchSearch && matchRole;
   });
@@ -18,14 +30,25 @@ export function ManageUsers() {
   const roleVariant: Record<string, 'blue' | 'green' | 'teal'> = {
     admin: 'blue',
     agent: 'teal',
-    customer: 'green',
+    user: 'green',
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32">
+        <Loader2 className="h-10 w-10 text-blue-600 animate-spin mb-4" />
+        <p className="text-slate-500 font-medium">Loading users...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Manage Users</h1>
-        <p className="text-slate-500 text-sm mt-1">{MOCK_USERS.length} total users</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Manage Users</h1>
+          <p className="text-slate-500 text-sm mt-1">{users.length} total users</p>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -47,7 +70,7 @@ export function ManageUsers() {
           <option value="">All Roles</option>
           <option value="admin">Admin</option>
           <option value="agent">Agent</option>
-          <option value="customer">Customer</option>
+          <option value="user">User</option>
         </select>
       </div>
 

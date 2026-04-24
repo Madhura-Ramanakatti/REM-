@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Search, MapPin, Bed, Bath } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, MapPin, Bed, Bath, Upload, Image as ImageIcon, Loader2, X } from 'lucide-react';
 import { usePropertyStore } from '../../store/propertyStore';
 import { useAuthStore } from '../../store/authStore';
 import { propertyService } from '../../services/api';
@@ -11,6 +11,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import toast from 'react-hot-toast';
 import type { Property } from '../../types';
+import clsx from 'clsx';
 
 type FormData = {
   title: string;
@@ -48,6 +49,23 @@ export function ManageProperties() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await propertyService.uploadImage(file);
+      setForm(f => ({ ...f, images: f.images ? `${f.images}\n${url}` : url }));
+      toast.success('Image uploaded successfully');
+    } catch (err: any) {
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const myProperties = user?.role === 'admin' ? properties : properties.filter(p => p.agentId === user?.id);
   const filtered = myProperties.filter(p => p.title.toLowerCase().includes(search.toLowerCase()) || p.city.toLowerCase().includes(search.toLowerCase()));
@@ -275,8 +293,56 @@ export function ManageProperties() {
             <textarea rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Image URLs (one per line)</label>
-            <textarea rows={2} placeholder="https://..." value={form.images} onChange={e => setForm(f => ({ ...f, images: e.target.value }))} className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Images</label>
+              <div className="relative">
+                <input
+                  type="file"
+                  id="image-upload"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                />
+                <label
+                  htmlFor="image-upload"
+                  className={clsx(
+                    "flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer transition-colors",
+                    uploading && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {uploading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Upload className="h-3 w-3" />
+                  )}
+                  Upload Image
+                </label>
+              </div>
+            </div>
+            <textarea
+              rows={2}
+              placeholder="Enter image URLs (one per line) or use the upload button"
+              value={form.images}
+              onChange={e => setForm(f => ({ ...f, images: e.target.value }))}
+              className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+            {form.images && (
+              <div className="flex gap-2 mt-2 overflow-x-auto pb-2">
+                {form.images.split('\n').filter(Boolean).map((url, i) => (
+                  <div key={i} className="relative group shrink-0">
+                    <img src={url} alt="" className="h-12 w-16 rounded border object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, images: f.images.split('\n').filter((_, idx) => idx !== i).join('\n') }))}
+                      className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-2 w-2" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <Input label="Features (comma-separated)" placeholder="Pool, Garage, Garden..." value={form.features} onChange={e => setForm(f => ({ ...f, features: e.target.value }))} />
           <div className="flex gap-3 pt-2">

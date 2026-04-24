@@ -121,6 +121,24 @@ export const propertyService = {
     return true;
   },
 
+  async uploadImage(file: File): Promise<string> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('property-images')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('property-images')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  },
+
   mapProperty(p: any): Property {
     return {
       id: p.id,

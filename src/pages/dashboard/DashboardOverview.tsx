@@ -6,13 +6,23 @@ import { useFavoritesStore } from '../../store/favoritesStore';
 import { formatPrice } from '../../utils/formatters';
 import { Badge } from '../../components/ui/Badge';
 import { Link } from 'react-router-dom';
-import { MOCK_USERS } from '../../data/mockData';
+import { useFavoritesStore } from '../../store/favoritesStore';
+import { formatPrice } from '../../utils/formatters';
+import { Badge } from '../../components/ui/Badge';
+import { Link } from 'react-router-dom';
+import { userService } from '../../services/api';
+import { useState, useEffect } from 'react';
 
 export function DashboardOverview() {
   const { user } = useAuthStore();
   const { properties } = usePropertyStore();
   const { inquiries } = useInquiryStore();
   const { favoriteIds } = useFavoritesStore();
+  const [totalUsers, setTotalUsers] = useState(0);
+
+  useEffect(() => {
+    userService.getAll().then(users => setTotalUsers(users.length));
+  }, []);
 
   const myProperties = user?.role === 'agent'
     ? properties.filter(p => p.agentId === user.id)
@@ -27,7 +37,7 @@ export function DashboardOverview() {
   const stats = user?.role === 'admin'
     ? [
         { icon: Building2, label: 'Total Properties', value: properties.length, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950' },
-        { icon: Users, label: 'Total Users', value: MOCK_USERS.length, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-950' },
+        { icon: Users, label: 'Total Users', value: totalUsers, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-950' },
         { icon: MessageSquare, label: 'Inquiries', value: inquiries.length, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950' },
         { icon: TrendingUp, label: 'Active Listings', value: properties.filter(p => p.status === 'active').length, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-950' },
       ]
