@@ -6,10 +6,6 @@ import { useFavoritesStore } from '../../store/favoritesStore';
 import { formatPrice } from '../../utils/formatters';
 import { Badge } from '../../components/ui/Badge';
 import { Link } from 'react-router-dom';
-import { useFavoritesStore } from '../../store/favoritesStore';
-import { formatPrice } from '../../utils/formatters';
-import { Badge } from '../../components/ui/Badge';
-import { Link } from 'react-router-dom';
 import { userService } from '../../services/api';
 import { useState, useEffect } from 'react';
 
@@ -62,7 +58,7 @@ export function DashboardOverview() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-          Welcome back, {user?.name.split(' ')[0]}!
+          Welcome back, {user?.name?.split(' ')[0] || 'User'}!
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
           Here's what's happening with your {user?.role === 'customer' ? 'searches' : 'listings'}.
